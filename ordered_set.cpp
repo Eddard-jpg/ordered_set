@@ -6,9 +6,6 @@
 
 #define node typename ordered_set<T>::Node
 
-template<typename T>
-ordered_set<T>::Node::Node(T value, Node *parent, Color color) :value_(value), parent_(parent), color_(color) {}
-
 // Tree Properties
 template<typename T>
 int ordered_set<T>::size() const { return root_ ? root_->size_ : 0; }
@@ -166,7 +163,7 @@ bool ordered_set<T>::insert(Node *u) {
 }
 
 template<typename T>
-bool ordered_set<T>::insert(T key) { return insert(new Node(key, nullptr, RED)); }
+bool ordered_set<T>::insert(T key) { return insert(new Node(key)); }
 
 
 template<typename T>

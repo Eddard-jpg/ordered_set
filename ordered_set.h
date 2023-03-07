@@ -56,16 +56,16 @@ private:
         
         Node() = default;
         
-        explicit Node(T value, Node *parent = nullptr, Color color = RED);
+        explicit Node(T value) : value_(value) {}
     
     private:
         class Array {
         public:
             unique_ptr<Node> data[2];
-            unique_ptr<Node> &operator[](Direction direction) { return data[direction==RIGHT]; }
-            const unique_ptr<Node> &operator[](Direction direction) const { return data[direction==RIGHT]; }
+            unique_ptr<Node> &operator[](Direction direction) { return data[direction == RIGHT]; }
+            const unique_ptr<Node> &operator[](Direction direction) const { return data[direction == RIGHT]; }
         };
-    
+        
         T value_;
         Array child_;
         Node *parent_ = nullptr;
