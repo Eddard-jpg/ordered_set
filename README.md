@@ -1,3 +1,5 @@
+# Ordered Set
+
 The Ordered Set is a data structure that stores unique elements in a sorted order, doing all operations (inserting, erasing, searching, etc..) in $O(log(n))$.
 
 It's similar to <a href = "https://cplusplus.com/reference/set/set/">C++ set</a>, but adds two functions:
