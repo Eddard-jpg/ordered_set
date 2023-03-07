@@ -14,7 +14,6 @@ enum class Direction {
 using Direction::LEFT;
 using Direction::RIGHT;
 inline Direction operator!(Direction direction) { return direction == LEFT ? RIGHT : LEFT; }
-inline int operator+(Direction direction) { return direction == RIGHT; }
 
 enum class Color {
     RED = 0, BLACK = 1
