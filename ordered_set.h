@@ -40,6 +40,8 @@ public:
     
     void clear();
     
+    const T &operator[](int index);
+    
     Iterator begin() const;
     
     Iterator end() const;
@@ -66,10 +68,6 @@ public:
         
         T const *operator->();
         
-        bool operator==(const Iterator &other) const;
-        
-        bool operator!=(const Iterator &other) const;
-        
         Iterator &operator++();
         
         Iterator operator++(int);
@@ -77,10 +75,29 @@ public:
         Iterator &operator--();
         
         Iterator operator--(int);
+        
+        Iterator operator+(int n);
+        
+        Iterator operator-(int n);
+    
+        int operator-(Iterator other);
+    
+        bool operator<(Iterator other);
+    
+        bool operator<=(Iterator other);
+    
+        bool operator==(const Iterator &other) const;
+    
+        bool operator!=(const Iterator &other) const;
+    
+        bool operator>=(Iterator other);
+    
+        bool operator>(Iterator other);
     
     private:
         Node *ptr_;
         const ordered_set *tree_;
+        int order();
     };
 
 private:
@@ -110,7 +127,6 @@ private:
     
     unique_ptr<Node> root_;
     
-    // Node functions
     static void add_child(Node *u, Node *child, Direction direction);
     
     static void update_size(Node *u, bool recursive = true);

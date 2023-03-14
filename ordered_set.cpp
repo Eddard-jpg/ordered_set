@@ -12,6 +12,7 @@ ordered_set<T>::ordered_set(initializer_list<T> values) { for (T value: values) 
 
 
 // Tree Properties
+
 template<typename T>
 int ordered_set<T>::size() const { return root_ ? root_->size_ : 0; }
 
@@ -23,6 +24,9 @@ void ordered_set<T>::clear() { root_.reset(); }
 
 
 // Getting
+
+template<typename T>
+const T &ordered_set<T>::operator[](int index) { return *find_by_order(index); }
 
 // Returns an iterator to the smallest element.
 template<typename T>
@@ -71,7 +75,9 @@ iterator ordered_set<T>::upper_bound(T key) const {
 // Returns an iterator to the (k+1)-th least element, or end() iterator if the size of the set is less than k+1.
 template<typename T>
 iterator ordered_set<T>::find_by_order(int k) const {
-    if (!root_ || k < 0 || k >= root_->size_) return end();
+    if (!root_ || k == root_->size_) return end();
+    
+    if (k < 0 || k > root_->size_) throw out_of_range("Order out of range.");
     
     Node *u = root_.get();
     while (true) {
@@ -234,7 +240,7 @@ bool ordered_set<T>::erase(Node *u) {
         return true;
     }
     Direction c_direction = u->child_[RIGHT] ? RIGHT : LEFT;
-    
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "NullDereference"
     Node *child = u->child_[c_direction].release();
@@ -394,12 +400,6 @@ T const *ordered_set<T>::Iterator::operator->() {
 }
 
 template<typename T>
-bool ordered_set<T>::Iterator::operator==(const Iterator &other) const { return ptr_ == other.ptr_; }
-
-template<typename T>
-bool ordered_set<T>::Iterator::operator!=(const Iterator &other) const { return ptr_ != other.ptr_; }
-
-template<typename T>
 iterator &ordered_set<T>::Iterator::operator++() {
     
     if (!ptr_) throw out_of_range("Incrementing end iterator.");
@@ -445,3 +445,39 @@ iterator ordered_set<T>::Iterator::operator--(int) {
     --(*this);
     return tmp;
 }
+
+
+// Random-Access Iterator
+
+template<typename T>
+iterator ordered_set<T>::Iterator::operator+(int n) { return *this = tree_->find_by_order(order() + n); }
+
+template<typename T>
+inline iterator operator+(int n, iterator i) { return i + n; }
+
+template<typename T>
+iterator ordered_set<T>::Iterator::operator-(int n) { return *this = tree_->find_by_order(order() - n); }
+
+template<typename T>
+int ordered_set<T>::Iterator::operator-(Iterator other) { return order() - other.order(); }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator<(ordered_set::Iterator other) { return order() < other.order(); }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator<=(ordered_set::Iterator other) { return order() <= other.order(); }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator==(const Iterator &other) const { return tree_ == other.tree_ && ptr_ == other.ptr_; }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator!=(const Iterator &other) const { return !(*this == other); }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator>=(ordered_set::Iterator other) { return order() >= other.order(); }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator>(ordered_set::Iterator other) { return order() > other.order(); }
+
+template<typename T>
+int ordered_set<T>::Iterator::order() { return ptr_ ? tree_->order_of_key(ptr_->value_) : tree_->size(); }
