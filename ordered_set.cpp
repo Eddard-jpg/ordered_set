@@ -138,7 +138,7 @@ pair<iterator, bool> ordered_set<T>::insert(Node *u) {
     return {iterator(this, u), true};
 }
 
-// Inserts key into the set. Returns true if it didn't exist before calling. Otherwise, returns false.
+// Attempts to insert key into the set. Returns a pair, the first element is an iterator that points to the possibly inserted element, and the second is a bool that is true if the element was actually inserted.
 template<typename T>
 pair<iterator, bool> ordered_set<T>::insert(T key) { return insert(new Node(key)); }
 
@@ -252,7 +252,7 @@ bool ordered_set<T>::erase(Node *u) {
     return true;
 }
 
-// Erases key from the set. Returns true if it didn't exist before calling. Otherwise, returns false.
+// Attempts to erase key from the set. Returns true if the key existed and was erased.
 template<typename T>
 bool ordered_set<T>::erase(T key) {
     Node *u = root_.get();
