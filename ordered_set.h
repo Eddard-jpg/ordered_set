@@ -28,25 +28,60 @@ private:
     class Node;
 
 public:
+    class Iterator;
+    
+    ordered_set() = default;
+    
+    ordered_set(initializer_list<T> values);
+    
     [[nodiscard]] int size() const;
     
     [[nodiscard]] bool empty() const;
     
     void clear();
     
-    Node *find(T key) const;
+    Iterator begin() const;
     
-    Node *lower_bound(T key) const;
+    Iterator end() const;
     
-    Node *upper_bound(T key) const;
+    Iterator find(T key) const;
     
-    Node *find_by_order(int k) const;
+    Iterator lower_bound(T key) const;
+    
+    Iterator upper_bound(T key) const;
+    
+    Iterator find_by_order(int k) const;
     
     int order_of_key(T key) const;
     
-    bool insert(T key);
+    pair<Iterator, bool> insert(T key);
     
     bool erase(T key);
+    
+    class Iterator {
+    public:
+        explicit Iterator(const ordered_set *tree, Node *ptr = nullptr);
+        
+        const T &operator*();
+        
+        T const *operator->();
+        
+        bool operator==(const Iterator &other) const;
+        
+        bool operator!=(const Iterator &other) const;
+        
+        Iterator &operator++();
+        
+        Iterator operator++(int);
+        
+        Iterator &operator--();
+        
+        Iterator operator--(int);
+    
+    private:
+        Node *ptr_;
+        const ordered_set *tree_;
+    };
 
 private:
     class Node {
@@ -84,7 +119,7 @@ private:
     
     void rotate(Node *u, Direction direction);
     
-    bool insert(Node *u);
+    pair<Iterator, bool> insert(Node *u);
     
     void insert_fix(Node *u);
     

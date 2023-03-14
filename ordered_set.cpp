@@ -4,7 +4,12 @@
 
 #include "ordered_set.h"
 
-#define node typename ordered_set<T>::Node
+#define iterator typename ordered_set<T>::Iterator
+
+
+template<typename T>
+ordered_set<T>::ordered_set(initializer_list<T> values) { for (T value: values) insert(value); }
+
 
 // Tree Properties
 template<typename T>
@@ -16,94 +21,62 @@ bool ordered_set<T>::empty() const { return !size(); }
 template<typename T>
 void ordered_set<T>::clear() { root_.reset(); }
 
-// Node Functions
-template<typename T>
-void ordered_set<T>::add_child(Node *u, Node *child, Direction direction) {
-    assert(!u->child_[direction]);
-    u->child_[direction].reset(child);
-    child->parent_ = u;
-}
 
-template<typename T>
-void ordered_set<T>::update_size(Node *u, bool recursive) {
-    if (!u) return;
-    u->size_ = 1;
-    for (auto &c: u->child_.data) if (c) u->size_ += c->size_;
-    if (recursive) update_size(u->parent_);
-}
+// Getting
 
+// Returns an iterator to the smallest element.
 template<typename T>
-Direction ordered_set<T>::get_direction(Node *u) {
-    assert(u->parent_);
-    return u->parent_->child_[RIGHT].get() == u ? RIGHT : LEFT;
-}
+iterator ordered_set<T>::begin() const { return find_by_order(0); }
 
+// Returns past-the-end (end()) iterator.
 template<typename T>
-void ordered_set<T>::rotate(Node *u, Direction direction) {
-    
-    Direction u_direction;
-    
-    // Create pointers to parent, child, and inner grandchild, while releasing unique_ptrs from u, child, and inner grandchild.
-    Node *parent = u->parent_;
-    if (parent) parent->child_[u_direction = get_direction(u)].release(); else root_.release();
-    Node *child = u->child_[!direction].release();
-    Node *grandchild = child->child_[direction].release();
-    
-    // Reattach unique_ptrs to u, -previously- child, and inner grandchild
-    add_child(child, u, direction);
-    if (parent) add_child(parent, child, u_direction); else root_.reset(child), child->parent_ = nullptr;
-    if (grandchild) add_child(u, grandchild, !direction);
-    
-    // Non-recursively update the sizes of the 2 nodes involved in the rotation, no other node sizes are affected.
-    update_size(u, false);
-    update_size(child, false);
-    
-}
+iterator ordered_set<T>::end() const { return Iterator(this); }
 
-// Searching
-
-// Returns a node pointer to the node with the value equal to key, or nullptr if no such node exists in the set.
+// Returns an iterator to the element equal to key, or end() iterator if no such element exists in the set.
 template<typename T>
-node *ordered_set<T>::find(T key) const {
+iterator ordered_set<T>::find(T key) const {
     Node *u = root_.get();
     while (u) {
         if (key == u->value_) break;
         if (key < u->value_) u = u->child_[LEFT].get();
         else u = u->child_[RIGHT].get();
     }
-    return u;
+    return Iterator(this, u);
 }
-// Returns a node pointer to the node with the least value greater than or equal to key, or nullptr if no such node exists in the set.
+
+// Returns an iterator to the least element greater than or equal to key, or end() iterator if no such element exists in the set.
 template<typename T>
-node *ordered_set<T>::lower_bound(T key) const {
+iterator ordered_set<T>::lower_bound(T key) const {
     Node *u = root_.get();
     Node *ret = nullptr;
     while (u) {
         if (key <= u->value_) ret = u, u = u->child_[LEFT].get();
         else u = u->child_[RIGHT].get();
     }
-    return ret;
+    return Iterator(this, ret);
 }
 
+// Returns an iterator to the least element greater than key, or end() iterator if no such element exists in the set.
 template<typename T>
-node *ordered_set<T>::upper_bound(T key) const {
+iterator ordered_set<T>::upper_bound(T key) const {
     Node *u = root_.get();
     Node *ret = nullptr;
     while (u) {
         if (key < u->value_) ret = u, u = u->child_[LEFT].get();
         else u = u->child_[RIGHT].get();
     }
-    return ret;
+    return Iterator(this, ret);
 }
 
+// Returns an iterator to the (k+1)-th least element, or end() iterator if the size of the set is less than k+1.
 template<typename T>
-typename ordered_set<T>::Node *ordered_set<T>::find_by_order(int k) const {
-    if (k < 0 || !root_ || k >= root_->size_) return nullptr;
+iterator ordered_set<T>::find_by_order(int k) const {
+    if (!root_ || k < 0 || k >= root_->size_) return end();
     
     Node *u = root_.get();
     while (true) {
         int l_size = u->child_[LEFT] ? u->child_[LEFT]->size_ : 0;
-        if (l_size == k) return u;
+        if (l_size == k) return Iterator(this, u);
         if (l_size > k) {
             u = u->child_[LEFT].get();
         } else {
@@ -114,6 +87,7 @@ typename ordered_set<T>::Node *ordered_set<T>::find_by_order(int k) const {
     
 }
 
+// Returns the number of elements in the set strictly less than key.
 template<typename T>
 int ordered_set<T>::order_of_key(T key) const {
     Node *u = root_.get();
@@ -131,20 +105,22 @@ int ordered_set<T>::order_of_key(T key) const {
     return order;
 }
 
+
 // Inserting
+
 template<typename T>
-bool ordered_set<T>::insert(Node *u) {
+pair<iterator, bool> ordered_set<T>::insert(Node *u) {
     if (!root_) {
         root_.reset(u);
         u->color_ = BLACK;
-        return true;
+        return {Iterator(this, u), true};
     }
     Node *current = root_.get(), *parent = nullptr;
     Direction direction;
     while (current) {
         if (u->value_ == current->value_) {
             delete u;
-            return false;
+            return {Iterator(this, current), false};
         }
         if (u->value_ < current->value_) {
             parent = current;
@@ -159,12 +135,12 @@ bool ordered_set<T>::insert(Node *u) {
     add_child(parent, u, direction);
     update_size(parent);
     insert_fix(u);
-    return true;
+    return {iterator(this, u), true};
 }
 
+// Inserts key into the set. Returns true if it didn't exist before calling. Otherwise, returns false.
 template<typename T>
-bool ordered_set<T>::insert(T key) { return insert(new Node(key)); }
-
+pair<iterator, bool> ordered_set<T>::insert(T key) { return insert(new Node(key)); }
 
 template<typename T>
 void ordered_set<T>::insert_fix(Node *u) {
@@ -213,7 +189,9 @@ void ordered_set<T>::insert_fix(Node *u) {
     
 }
 
+
 // Erasing
+
 template<typename T>
 bool ordered_set<T>::erase(Node *u) {
     if (!u) return false; // Doesn't exist
@@ -256,7 +234,12 @@ bool ordered_set<T>::erase(Node *u) {
         return true;
     }
     Direction c_direction = u->child_[RIGHT] ? RIGHT : LEFT;
+    
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "NullDereference"
     Node *child = u->child_[c_direction].release();
+#pragma clang diagnostic pop
+    
     // Non-leaf with one child. So, child is a red leaf, and u has to be black.
     assert(child->color_ == RED && child->size_ == 1 && u->color_ == BLACK);
     // Replace u with child and color it black. No fixes needed.
@@ -269,8 +252,17 @@ bool ordered_set<T>::erase(Node *u) {
     return true;
 }
 
+// Erases key from the set. Returns true if it didn't exist before calling. Otherwise, returns false.
 template<typename T>
-bool ordered_set<T>::erase(T key) { return erase(find(key)); }
+bool ordered_set<T>::erase(T key) {
+    Node *u = root_.get();
+    while (u) {
+        if (key == u->value_) break;
+        if (key < u->value_) u = u->child_[LEFT].get();
+        else u = u->child_[RIGHT].get();
+    }
+    return erase(u);
+}
 
 template<typename T>
 void ordered_set<T>::erase_fix(Node *u) {
@@ -335,4 +327,121 @@ void ordered_set<T>::erase_fix(Node *u) {
     // Distant nephew's subtree passes through the black added to distant nephew instead of the sibling's black (swapped to parent), no changes in black depth.
     // u's subtree passes through an extra black from the sibling, fixed.
     
+}
+
+
+// Node Functions
+
+template<typename T>
+void ordered_set<T>::add_child(Node *u, Node *child, Direction direction) {
+    assert(!u->child_[direction]);
+    u->child_[direction].reset(child);
+    child->parent_ = u;
+}
+
+template<typename T>
+void ordered_set<T>::update_size(Node *u, bool recursive) {
+    if (!u) return;
+    u->size_ = 1;
+    for (auto &c: u->child_.data) if (c) u->size_ += c->size_;
+    if (recursive) update_size(u->parent_);
+}
+
+template<typename T>
+Direction ordered_set<T>::get_direction(Node *u) {
+    assert(u->parent_);
+    return u->parent_->child_[RIGHT].get() == u ? RIGHT : LEFT;
+}
+
+template<typename T>
+void ordered_set<T>::rotate(Node *u, Direction direction) {
+    
+    Direction u_direction;
+    
+    // Create pointers to parent, child, and inner grandchild, while releasing unique_ptrs from u, child, and inner grandchild.
+    Node *parent = u->parent_;
+    if (parent) parent->child_[u_direction = get_direction(u)].release(); else root_.release();
+    Node *child = u->child_[!direction].release();
+    Node *grandchild = child->child_[direction].release();
+    
+    // Reattach unique_ptrs to u, -previously- child, and inner grandchild
+    add_child(child, u, direction);
+    if (parent) add_child(parent, child, u_direction); else root_.reset(child), child->parent_ = nullptr;
+    if (grandchild) add_child(u, grandchild, !direction);
+    
+    // Non-recursively update the sizes of the 2 nodes involved in the rotation, no other node sizes are affected.
+    update_size(u, false);
+    update_size(child, false);
+    
+}
+
+
+// Iterator Functions
+
+template<typename T>
+ordered_set<T>::Iterator::Iterator(const ordered_set *tree, Node *ptr):tree_(tree), ptr_(ptr) {}
+
+template<typename T>
+const T &ordered_set<T>::Iterator::operator*() {
+    if (!ptr_) throw out_of_range("Dereferencing end iterator.");
+    return ptr_->value_;
+}
+
+template<typename T>
+T const *ordered_set<T>::Iterator::operator->() {
+    if (!ptr_) throw out_of_range("Dereferencing end iterator.");
+    return &ptr_->value_;
+}
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator==(const Iterator &other) const { return ptr_ == other.ptr_; }
+
+template<typename T>
+bool ordered_set<T>::Iterator::operator!=(const Iterator &other) const { return ptr_ != other.ptr_; }
+
+template<typename T>
+iterator &ordered_set<T>::Iterator::operator++() {
+    
+    if (!ptr_) throw out_of_range("Incrementing end iterator.");
+    
+    if (ptr_->child_[RIGHT]) {
+        ptr_ = ptr_->child_[RIGHT].get();
+        while (ptr_->child_[LEFT]) ptr_ = ptr_->child_[LEFT].get();
+    } else {
+        while (ptr_->parent_ && get_direction(ptr_) == RIGHT) ptr_ = ptr_->parent_;
+        ptr_ = ptr_->parent_; // In case of nullptr, it means no element is greater than current element, so it becomes an end iterator.
+    }
+    
+    return *this;
+}
+
+template<typename T>
+iterator ordered_set<T>::Iterator::operator++(int) {
+    Iterator tmp(*this);
+    ++(*this);
+    return tmp;
+}
+
+template<typename T>
+iterator &ordered_set<T>::Iterator::operator--() {
+    
+    if (!ptr_) {
+        *this = tree_->find_by_order(tree_->size() - 1);
+    } else if (ptr_->child_[LEFT]) {
+        ptr_ = ptr_->child_[LEFT].get();
+        while (ptr_->child_[RIGHT]) ptr_ = ptr_->child_[RIGHT].get();
+    } else {
+        while (ptr_->parent_ && get_direction(ptr_) == LEFT) ptr_ = ptr_->parent_;
+        ptr_ = ptr_->parent_; // In case of nullptr, it means no element is smaller than current element, so it was a begin iterator.
+        if (!ptr_) throw out_of_range("Decrementing begin iterator.");
+    }
+    
+    return *this;
+}
+
+template<typename T>
+iterator ordered_set<T>::Iterator::operator--(int) {
+    Iterator tmp(*this);
+    --(*this);
+    return tmp;
 }
